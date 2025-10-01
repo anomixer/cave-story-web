@@ -72,7 +72,12 @@ const redirectToGoogleLogin = () => {
     let stateUrl = new URL(location.href);
     stateUrl.searchParams.set('nonce', crypto.randomUUID());
     localStorage.oauthState = stateUrl.href;
-    window.location = `https://accounts.google.com/o/oauth2/v2/auth?scope=https%3A//www.googleapis.com/auth/drive.appdata&access_type=offline&include_granted_scopes=true&response_type=code&state=${encodeURIComponent(stateUrl.href)}&redirect_uri=${encodeURIComponent(location.origin + '/oauth')}&client_id=729554825336-ol1mgud6qk7vi5ff4ping56ml6pu843k.apps.googleusercontent.com&prompt=select_account+consent`;
+//
+// Here you can create your own oauth client ID at https://console.cloud.google.com
+// Add you website with /oauth to redirect_uri (e.g. http://cave-story-web.pages.dev/oauth or http://localhost:8080/oauth )
+// Then edit fllowing line with your info: client_id=nnnnnnnnnnnn-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+//
+    window.location = `https://accounts.google.com/o/oauth2/v2/auth?scope=https%3A//www.googleapis.com/auth/drive.appdata&access_type=offline&include_granted_scopes=true&response_type=code&state=${encodeURIComponent(stateUrl.href)}&redirect_uri=${encodeURIComponent(location.origin + '/oauth')}&client_id=764715416098-r0q3g7mcca2rkdnieh4s1o99rvi7sa74.apps.googleusercontent.com&prompt=select_account+consent`;
 };
 
 const showModal = async ({title, message, action, cancel}) => {
