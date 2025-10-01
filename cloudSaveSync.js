@@ -1,5 +1,14 @@
 // Handles mounting an emscripten filesystem backed by indexeddb, and optionally further backing it with Google Drive cloud sync if the user logs in with Google.
 
+// Determine API and redirect paths based on hostname
+const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const apiPrefix = isLocal ? '' : '/api';
+// The redirect_uri for the token exchange must EXACTLY match the one used to request the code.
+// The local server has a /oauth endpoint. The CF function has /api/oauth.
+const oauthRedirectPath = isLocal ? '/oauth' : '/api/oauth';
+const fullRedirectUri = location.origin + oauthRedirectPath;
+
+
 // Handle OAuth redirect url params oauthCode or oauthError from /oauth handler and verify nonce for security
 
 const url = new URL(location.href);
@@ -17,7 +26,7 @@ if (url.searchParams.has('oauthCode')) {
         url.searchParams.delete('nonce');
         history.replaceState(null, '', url.href);
     } else {
-        const getTokens = fetch(`/google-login?code=${encodeURIComponent(url.searchParams.get('oauthCode'))}&origin=${encodeURIComponent(window.location.origin)}`, {
+        const getTokens = fetch(`${apiPrefix}/google-login?code=${encodeURIComponent(url.searchParams.get('oauthCode'))}&redirect_uri=${encodeURIComponent(fullRedirectUri)}`, {
             method: 'POST',
             headers: { 'X-Requested-With': 'fetch', },
         }).then(response => response.json());
@@ -72,7 +81,12 @@ const redirectToGoogleLogin = () => {
     let stateUrl = new URL(location.href);
     stateUrl.searchParams.set('nonce', crypto.randomUUID());
     localStorage.oauthState = stateUrl.href;
-    window.location = `https://accounts.google.com/o/oauth2/v2/auth?scope=https%3A//www.googleapis.com/auth/drive.appdata&access_type=offline&include_granted_scopes=true&response_type=code&state=${encodeURIComponent(stateUrl.href)}&redirect_uri=${encodeURIComponent(location.origin + '/oauth')}&client_id=729554825336-ol1mgud6qk7vi5ff4ping56ml6pu843k.apps.googleusercontent.com&prompt=select_account+consent`;
+//
+// Here you can create your own oauth client ID at https://console.cloud.google.com
+// Add you website with /oauth to redirect_uri (e.g. http://cave-story-web.pages.dev/oauth or http://localhost:8080/oauth )
+// Then edit fllowing line with your info: client_id=nnnnnnnnnnnn-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+//
+    window.location = `https://accounts.google.com/o/oauth2/v2/auth?scope=https%3A//www.googleapis.com/auth/drive.appdata&access_type=offline&include_granted_scopes=true&response_type=code&state=${encodeURIComponent(stateUrl.href)}&redirect_uri=${encodeURIComponent(fullRedirectUri)}&client_id=764715416098-r0q3g7mcca2rkdnieh4s1o99rvi7sa74.apps.googleusercontent.com&prompt=select_account+consent`;
 };
 
 const showModal = async ({title, message, action, cancel}) => {
@@ -99,11 +113,11 @@ const confirmLogout = async() => {
         // fetch(`https://oauth2.googleapis.com/revoke?token=${localStorage.access_token}`, {
         //     method: 'POST',
         //     headers: { 'Content-Type': 'application/x-www-form-urlencoded', },
-        // }).finally(()=>{
+        // }).finally(()=>{{
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             location.reload()
-        // });
+        // }});
     }
 };
 
@@ -224,10 +238,10 @@ const setButtonText = (text, {makeRed, handler, delay}) => {
     loginButtonElement.style.visibility = 'visible';
     loginButtonElement.style.opacity = '1';
     if (delay > 0) {
-        loginButtonInvisibleTimeout = setTimeout(()=>{
+        loginButtonInvisibleTimeout = setTimeout(()=>{{
             loginButtonElement.style.opacity = '0';
             loginButtonInvisibleTimeout = setTimeout(()=>loginButtonElement.style.visibility = 'hidden', 500)
-        }, delay * 1000);
+        }}, delay * 1000);
     }
     if (handler) {
         loginButtonElement.removeEventListener('click', redirectToGoogleLogin);
@@ -273,7 +287,7 @@ const authenticatedFetch = async (url, options, nested) => {
         }
         const refresh_token = localStorage.refresh_token;
         if (!refresh_token) throw 'No refresh token';
-        const refreshResponse = await fetch(`/oauth-refresh?refresh_token=${encodeURIComponent(refresh_token)}`, {
+        const refreshResponse = await fetch(`${apiPrefix}/oauth-refresh?refresh_token=${encodeURIComponent(refresh_token)}`, {
             method: 'POST',
             headers: { 'X-Requested-With': 'fetch', },
         });
@@ -307,20 +321,20 @@ export const mount = async(modulePromise, mountPoint) => {
         pt -= inactiveTime();
         return pt;
     }
-    window.addEventListener('focus', ()=>{
+    window.addEventListener('focus', ()=>{{
         if (!focused) {
             console.log('focused @ ', playtime());
             focused = true;
             committedInactiveTime += performance.now() - lastFocusedTime;
         }
-    });
-    window.addEventListener('blur', ()=>{
+    }});
+    window.addEventListener('blur', ()=>{{
         if (focused) {
             focused = false;
             lastFocusedTime = performance.now();
             console.log('blur @ ', playtime());
         }
-    });
+    }});
     function inactiveTime() {
         return committedInactiveTime + (focused ? 0 : performance.now() - lastFocusedTime);
     }
@@ -342,12 +356,12 @@ export const mount = async(modulePromise, mountPoint) => {
             }
             return json;
         });
-        const db = await new Promise(async (resolve, reject)=>{
+        const db = await new Promise(async (resolve, reject)=>{{
             (await modulePromise).IDBFS.getDB(mountPoint, (err, db) => {
                 if (err) reject(err);
                 else resolve(db);
             });
-        });
+        }});
 
         let localPlaytime = playtime();
         const allFiles = {};
@@ -463,11 +477,11 @@ export const mount = async(modulePromise, mountPoint) => {
             } else if (local) {
                 if (localPlaytime < remotePlaytime) {
                     console.log(`file only present locally, deleting ${name} from local`);
-                    fetchPromises.push(new Promise((resolve, reject)=>{
+                    fetchPromises.push(new Promise((resolve, reject)=>{{
                         const op = db.transaction('FILE_DATA', 'readwrite').objectStore('FILE_DATA').delete(local.name);
                         op.onsuccess = resolve;
                         op.onerror = reject;
-                    }));
+                    }}));
                 } else {
                     console.log(`file only present locally, uploading ${name}`);
                     fetchPromises.push(uploadFile(local));
@@ -519,13 +533,13 @@ export const mount = async(modulePromise, mountPoint) => {
     async function save() {
         lastSaveTime = performance.now();
         return new Promise((resolve, reject) => {
-            setTimeout(()=>{
+            setTimeout(()=>{{
                 module.FS.syncfs(false, (err) => {
                     if (err) { console.error(err); debugger; reject(); return; }
                     localStorage.setItem(`playtime:${mountPoint}`, playtime());
                     resolve(cloudSync());
                 });
-            }, 50);
+            }}, 50);
         });
     };
 
@@ -534,3 +548,4 @@ export const mount = async(modulePromise, mountPoint) => {
     });
     return save;
 };
+
